@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kite-rpc-doctor"
+version = "0.1.0"
+description = "Read-only JSON-RPC diagnostics for Kite agent developers"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "kite-rpc-doctor contributors"}]
+keywords = ["kite", "kiteai", "json-rpc", "agent", "web3", "diagnostics"]
+dependencies = []
+
+[project.scripts]
+kite-rpc-doctor = "kite_rpc_doctor.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["kite_rpc_doctor*"]
