@@ -1,4 +1,5 @@
 import math
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -19,6 +20,9 @@ class DoctorReport:
     block_latency_ms: float
     block_detail_latency_ms: float
     observed_at: str
+    contract_address: Optional[str] = None
+    contract_deployed: Optional[bool] = None
+    contract_latency_ms: Optional[float] = None
 
     @property
     def block_fresh(self) -> bool:
@@ -26,10 +30,14 @@ class DoctorReport:
 
     @property
     def ok(self) -> bool:
-        return self.chain_id == self.expected_chain_id and self.block_fresh
+        return (
+            self.chain_id == self.expected_chain_id
+            and self.block_fresh
+            and self.contract_deployed is not False
+        )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result: Dict[str, Any] = {
             "ok": self.ok,
             "status": "pass" if self.ok else "fail",
             "chainId": self.chain_id,
@@ -47,6 +55,11 @@ class DoctorReport:
                 "blockByNumber": self.block_detail_latency_ms,
             },
         }
+        if self.contract_address is not None:
+            result["contractAddress"] = self.contract_address
+            result["contractDeployed"] = self.contract_deployed
+            result["latencyMs"]["contractCode"] = self.contract_latency_ms
+        return result
 
 
 def run_doctor(
@@ -54,9 +67,12 @@ def run_doctor(
     expected_chain_id: int,
     max_block_age_seconds: float = 300.0,
     now: Optional[datetime] = None,
+    contract_address: Optional[str] = None,
 ) -> DoctorReport:
     if not math.isfinite(max_block_age_seconds) or max_block_age_seconds <= 0:
         raise ValueError("maximum block age must be a positive finite number")
+    if contract_address is not None and not re.fullmatch(r"0x[0-9a-fA-F]{40}", contract_address):
+        raise ValueError("contract address must be a 20-byte 0x-prefixed hex address")
     current_time = now if now is not None else datetime.now(timezone.utc)
     if current_time.tzinfo is None or current_time.utcoffset() is None:
         raise ValueError("observation time must be timezone-aware")
@@ -85,6 +101,16 @@ def run_doctor(
     except (OverflowError, OSError, ValueError) as exc:
         raise RpcResponseError("block timestamp is outside the supported range") from exc
 
+    contract_deployed: Optional[bool] = None
+    contract_latency: Optional[float] = None
+    if contract_address is not None:
+        started = time.monotonic()
+        code = client.call("eth_getCode", [contract_address, hex(latest_block)])
+        contract_latency = (time.monotonic() - started) * 1000
+        if not isinstance(code, str) or not re.fullmatch(r"0x(?:[0-9a-fA-F]{2})*", code):
+            raise RpcResponseError("eth_getCode result must be whole-byte hex data")
+        contract_deployed = code != "0x"
+
     block_age = (current_time - block_time).total_seconds()
     observed_at = current_time.isoformat(timespec="seconds").replace("+00:00", "Z")
     return DoctorReport(
@@ -98,4 +124,7 @@ def run_doctor(
         block_latency_ms=round(block_latency, 3),
         block_detail_latency_ms=round(block_detail_latency, 3),
         observed_at=observed_at,
+        contract_address=contract_address,
+        contract_deployed=contract_deployed,
+        contract_latency_ms=None if contract_latency is None else round(contract_latency, 3),
     )
