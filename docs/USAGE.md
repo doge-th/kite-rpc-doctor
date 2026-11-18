@@ -2,7 +2,8 @@
 
 ```text
 kite-rpc-doctor check [--rpc-url URL] [--expected-chain-id ID]
-                      [--timeout SECONDS] [--json]
+                      [--timeout SECONDS] [--max-block-age-seconds SECONDS]
+                      [--json]
 ```
 
 `python3 -m kite_rpc_doctor` is equivalent to the installed command.
@@ -23,18 +24,24 @@ python3 -m kite_rpc_doctor check \
   --expected-chain-id 2366
 ```
 
+Allow a ten-minute block age for a slower network:
+
+```bash
+python3 -m kite_rpc_doctor check --max-block-age-seconds 600
+```
+
 Use the check in shell automation:
 
 ```bash
 if python3 -m kite_rpc_doctor check --json > report.json; then
-  echo "RPC and chain ID are ready"
+  echo "RPC, chain ID, and block freshness are ready"
 else
   status=$?
   echo "Check failed with status $status"
 fi
 ```
 
-A chain mismatch returns `1`; connectivity, configuration, and response errors return `2`. Treat both as a failed readiness gate. The JSON report contains `ok`, `status`, `chainId`, `expectedChainId`, `latestBlock`, `latestBlockHex`, `observedAt`, and per-call `latencyMs` fields.
+A chain mismatch, stale block, or future-dated block returns `1`; connectivity, configuration, and response errors return `2`. Treat all of them as a failed readiness gate. The JSON report contains `ok`, `status`, `chainId`, `expectedChainId`, `latestBlock`, `latestBlockHex`, `latestBlockTimestamp`, `latestBlockAgeSeconds`, `maxBlockAgeSeconds`, `blockFresh`, `observedAt`, and per-call `latencyMs` fields.
 
 ## Authentication and errors
 
