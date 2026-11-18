@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -30,6 +31,11 @@ class RpcHandler(BaseHTTPRequestHandler):
                 pass
             elif self.path == "/rpc-error":
                 message["error"] = {"code": -32601, "message": "method not found"}
+            elif request["method"] == "eth_getBlockByNumber":
+                message["result"] = {
+                    "number": request["params"][0],
+                    "timestamp": hex(int(time.time()) - 30),
+                }
             else:
                 message["result"] = "0x940" if request["method"] == "eth_chainId" else "0x1506163"
             body = json.dumps(message).encode("utf-8")
@@ -62,6 +68,9 @@ class JsonRpcClientTests(unittest.TestCase):
         client = JsonRpcClient(self.base_url)
         self.assertEqual(client.call("eth_chainId"), "0x940")
         self.assertEqual(client.call("eth_blockNumber"), "0x1506163")
+        block = client.call("eth_getBlockByNumber", ["0x1506163", False])
+        self.assertEqual(block["number"], "0x1506163")
+        self.assertGreater(int(block["timestamp"], 16), 0)
 
     def test_surfaces_rpc_errors(self):
         with self.assertRaisesRegex(RpcResponseError, "method not found"):
