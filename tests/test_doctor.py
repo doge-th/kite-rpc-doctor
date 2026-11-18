@@ -130,6 +130,46 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual(status, 2)
         self.assertIn("offline", errors.getvalue())
 
+    def test_reports_deployed_contract_code(self):
+        client = Mock()
+        address = "0x38129cf4CE5E183eFF248F42A7D345Bb1B47621A"
+        client.call.side_effect = [
+            "0x940",
+            "0x10",
+            block_result(16, int(NOW.timestamp()) - 30),
+            "0x6000",
+        ]
+        report = run_doctor(client, 2368, 300, now=NOW, contract_address=address)
+        self.assertTrue(report.contract_deployed)
+        self.assertTrue(report.ok)
+        self.assertTrue(report.to_dict()["contractDeployed"])
+        client.call.assert_called_with("eth_getCode", [address, "0x10"])
+
+    def test_missing_contract_code_fails_the_check(self):
+        client = Mock()
+        client.call.side_effect = ["0x940", "0x10", block_result(), "0x0"]
+        with self.assertRaises(RpcResponseError):
+            run_doctor(client, 2368, contract_address="0x38129cf4CE5E183eFF248F42A7D345Bb1B47621A")
+
+    def test_rejects_invalid_contract_address_before_rpc_calls(self):
+        client = Mock()
+        with self.assertRaises(ValueError):
+            run_doctor(client, 2368, contract_address="0x1234")
+        client.call.assert_not_called()
+
+    @patch("kite_rpc_doctor.cli.JsonRpcClient")
+    def test_missing_contract_code_has_exit_status_one(self, client_type):
+        client_type.return_value.call.side_effect = ["0x940", "0x10", block_result(), "0x"]
+        output = io.StringIO()
+        with redirect_stdout(output):
+            status = main([
+                "check",
+                "--contract-address",
+                "0x38129cf4CE5E183eFF248F42A7D345Bb1B47621A",
+            ])
+        self.assertEqual(status, 1)
+        self.assertIn("Contract code: MISSING", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

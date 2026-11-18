@@ -31,6 +31,8 @@ class RpcHandler(BaseHTTPRequestHandler):
                 pass
             elif self.path == "/rpc-error":
                 message["error"] = {"code": -32601, "message": "method not found"}
+            elif request["method"] == "eth_getCode":
+                message["result"] = "0x6000"
             elif request["method"] == "eth_getBlockByNumber":
                 message["result"] = {
                     "number": request["params"][0],
@@ -71,6 +73,7 @@ class JsonRpcClientTests(unittest.TestCase):
         block = client.call("eth_getBlockByNumber", ["0x1506163", False])
         self.assertEqual(block["number"], "0x1506163")
         self.assertGreater(int(block["timestamp"], 16), 0)
+        self.assertEqual(client.call("eth_getCode", ["0x38129cf4CE5E183eFF248F42A7D345Bb1B47621A", "0x1506163"]), "0x6000")
 
     def test_surfaces_rpc_errors(self):
         with self.assertRaisesRegex(RpcResponseError, "method not found"):
