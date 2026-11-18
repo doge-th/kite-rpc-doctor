@@ -2,6 +2,15 @@
 
 Notable changes are documented here. The project follows semantic versioning.
 
+## 0.3.0 - 2026-11-19
+
+### Added
+
+- Optional `eth_getCode` check for deployed contract bytecode at the observed latest block.
+- `--contract-address` and `KITE_CONTRACT_ADDRESS` configuration.
+- Contract presence and latency fields in JSON reports, plus CLI output and exit-status handling.
+- Validation for contract addresses and malformed bytecode responses, with loopback and CLI regressions.
+
 ## 0.2.0 - 2026-11-18
 
 ### Added
