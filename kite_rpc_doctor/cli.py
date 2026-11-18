@@ -19,13 +19,13 @@ def positive_chain_id(value: str) -> int:
     return parsed
 
 
-def positive_timeout(value: str) -> float:
+def positive_seconds(value: str) -> float:
     try:
         parsed = float(value)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError("timeout must be a number") from exc
+        raise argparse.ArgumentTypeError("value must be a number") from exc
     if not math.isfinite(parsed) or parsed <= 0:
-        raise argparse.ArgumentTypeError("timeout must be positive and finite")
+        raise argparse.ArgumentTypeError("value must be positive and finite")
     return parsed
 
 
@@ -35,7 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Run read-only health checks against a Kite EVM JSON-RPC endpoint.",
     )
     commands = parser.add_subparsers(dest="command", required=True)
-    check = commands.add_parser("check", help="check chain ID and latest block")
+    check = commands.add_parser("check", help="check chain ID, latest block, and block freshness")
     check.add_argument(
         "--rpc-url",
         default=os.environ.get("KITE_RPC_URL", "https://rpc-testnet.gokite.ai"),
@@ -49,9 +49,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check.add_argument(
         "--timeout",
-        type=positive_timeout,
+        type=positive_seconds,
         default=os.environ.get("KITE_RPC_TIMEOUT_SECONDS", "10"),
         help="request timeout in seconds (default: KITE_RPC_TIMEOUT_SECONDS or 10)",
+    )
+    check.add_argument(
+        "--max-block-age-seconds",
+        type=positive_seconds,
+        default=os.environ.get("KITE_MAX_BLOCK_AGE_SECONDS", "300"),
+        help="maximum accepted block age (default: KITE_MAX_BLOCK_AGE_SECONDS or 300)",
     )
     check.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     return parser
@@ -61,7 +67,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         client = JsonRpcClient(args.rpc_url, args.timeout)
-        report = run_doctor(client, args.expected_chain_id)
+        report = run_doctor(client, args.expected_chain_id, args.max_block_age_seconds)
     except (RpcError, ValueError) as exc:
         print("kite-rpc-doctor: {}".format(exc), file=sys.stderr)
         return 2
@@ -72,5 +78,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("Kite RPC check: {}".format("PASS" if report.ok else "FAIL"))
         print("Chain ID: {} (expected {})".format(report.chain_id, report.expected_chain_id))
         print("Latest block: {} ({})".format(report.latest_block, hex(report.latest_block)))
+        print("Block age: {} seconds (limit {})".format(
+            report.latest_block_age_seconds, report.max_block_age_seconds
+        ))
         print("Observed at: {}".format(report.observed_at))
     return 0 if report.ok else 1
