@@ -3,7 +3,7 @@
 ```text
 kite-rpc-doctor check [--rpc-url URL] [--expected-chain-id ID]
                       [--timeout SECONDS] [--max-block-age-seconds SECONDS]
-                      [--json]
+                      [--contract-address ADDRESS] [--json]
 ```
 
 `python3 -m kite_rpc_doctor` is equivalent to the installed command.
@@ -30,6 +30,14 @@ Allow a ten-minute block age for a slower network:
 python3 -m kite_rpc_doctor check --max-block-age-seconds 600
 ```
 
+Check for contract bytecode at the observed block:
+
+```bash
+python3 -m kite_rpc_doctor check \
+  --contract-address 0x38129cf4CE5E183eFF248F42A7D345Bb1B47621A \
+  --json
+```
+
 Use the check in shell automation:
 
 ```bash
@@ -41,7 +49,9 @@ else
 fi
 ```
 
-A chain mismatch, stale block, or future-dated block returns `1`; connectivity, configuration, and response errors return `2`. Treat all of them as a failed readiness gate. The JSON report contains `ok`, `status`, `chainId`, `expectedChainId`, `latestBlock`, `latestBlockHex`, `latestBlockTimestamp`, `latestBlockAgeSeconds`, `maxBlockAgeSeconds`, `blockFresh`, `observedAt`, and per-call `latencyMs` fields.
+A chain mismatch, stale block, future-dated block, or requested contract with empty code returns `1`; connectivity, configuration, and response errors return `2`. Treat all of them as a failed readiness gate.
+
+The base JSON report contains `ok`, `status`, `chainId`, `expectedChainId`, `latestBlock`, `latestBlockHex`, `latestBlockTimestamp`, `latestBlockAgeSeconds`, `maxBlockAgeSeconds`, `blockFresh`, `observedAt`, and per-call `latencyMs` fields. Contract checks add `contractAddress`, `contractDeployed`, and a `contractCode` latency field.
 
 ## Authentication and errors
 
