@@ -2,6 +2,13 @@
 
 Notable changes are documented here. The project follows semantic versioning.
 
+## 0.3.1 - 2026-11-19
+
+### Fixed
+
+- Limit JSON-RPC response bodies to 1 MiB so malformed or hostile endpoints cannot cause unbounded memory consumption.
+- Add a loopback regression covering responses that exceed the limit.
+
 ## 0.3.0 - 2026-11-19
 
 ### Added

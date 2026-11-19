@@ -97,6 +97,7 @@ See [usage](docs/USAGE.md), [architecture](docs/ARCHITECTURE.md), and [testing a
 - Block freshness depends on the local system clock and the configured age limit.
 - Contract code presence does not establish contract identity, ownership, source verification, or safety.
 - HTTP endpoints are supported for local development. Use HTTPS for remote endpoints.
+- JSON-RPC response bodies are limited to 1 MiB to prevent unbounded memory consumption.
 - Each JSON-RPC call has its own timeout; calls are sequential.
 
 ## Contributing and license
