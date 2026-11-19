@@ -2,6 +2,15 @@
 
 Notable changes are documented here. The project follows semantic versioning.
 
+## 0.4.0 - 2026-11-20
+
+### Added
+
+- New `compare` command for independent Kite RPC health and divergence checks.
+- Configurable maximum block-height delta with chain ID and endpoint health requirements.
+- Full primary/secondary comparison reports without endpoint URLs.
+- Environment configuration for secondary RPC URL and block delta, with CLI and boundary tests.
+
 ## 0.3.1 - 2026-11-19
 
 ### Fixed

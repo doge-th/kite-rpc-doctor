@@ -1,10 +1,10 @@
 # kite-rpc-doctor
 
-A small, read-only command-line health check for Kite EVM JSON-RPC endpoints. It helps agent and x402 developers detect a wrong network, an unreachable RPC, malformed responses, stale block data, or missing contract code before starting an agent or payment service.
+A small, read-only command-line health check for Kite EVM JSON-RPC endpoints. It helps agent and x402 developers detect a wrong network, an unreachable RPC, malformed responses, stale block data, missing contract code, or divergent endpoints before starting an agent or payment service.
 
 ## KiteAI integration
 
-The tool sends real `eth_chainId`, `eth_blockNumber`, and `eth_getBlockByNumber` JSON-RPC requests to a Kite endpoint. When a contract address is supplied, it also calls `eth_getCode` at that block. The default endpoint is Kite Testnet (`https://rpc-testnet.gokite.ai`, chain ID `2368` / `0x940`). The integration is implemented in `kite_rpc_doctor/rpc.py` and `kite_rpc_doctor/doctor.py`; the name is not merely a label or an unused dependency.
+The tool sends real `eth_chainId`, `eth_blockNumber`, and `eth_getBlockByNumber` JSON-RPC requests to a Kite endpoint. When a contract address is supplied, it also calls `eth_getCode` at that block. The `compare` command runs the same checks against two endpoints and compares their chain IDs and block heights. The default endpoint is Kite Testnet (`https://rpc-testnet.gokite.ai`, chain ID `2368` / `0x940`). The integration is implemented in `kite_rpc_doctor/rpc.py`, `doctor.py`, and `compare.py`.
 
 The tool never submits transactions, signs payloads, requests wallet keys, verifies x402 payments, or claims settlement. It performs only read-only JSON-RPC calls.
 
@@ -60,11 +60,13 @@ python3 -m kite_rpc_doctor check \
   --json
 ```
 
-- `KITE_RPC_URL`: endpoint URL; credentials in URL userinfo are rejected.
+- `KITE_RPC_URL`: primary endpoint URL; credentials in URL userinfo are rejected.
 - `KITE_EXPECTED_CHAIN_ID`: decimal or `0x`-prefixed expected chain ID.
 - `KITE_RPC_TIMEOUT_SECONDS`: positive, finite request timeout.
 - `KITE_MAX_BLOCK_AGE_SECONDS`: positive, finite maximum accepted block age. The default is 300 seconds.
 - `KITE_CONTRACT_ADDRESS`: optional 20-byte EVM address checked for deployed bytecode.
+- `KITE_SECONDARY_RPC_URL`: optional second endpoint used by `compare`.
+- `KITE_MAX_BLOCK_DELTA`: non-negative maximum allowed block-height difference. The default is 5.
 
 The block detail must match the reported height. A stale block or a timestamp later than the local observation time fails the check. Tune the age limit for the target network and expected block production pattern.
 
@@ -82,18 +84,32 @@ python3 -m kite_rpc_doctor check \
 
 The JSON report then includes `contractAddress`, `contractDeployed`, and contract-call latency. Empty code (`0x`) fails the check. Code presence proves only that bytecode exists at that address and block, not that it is the intended, secure, or verified contract.
 
+## Compare two endpoints
+
+Use a second, independent Kite RPC endpoint to detect mismatched networks or divergent block data:
+
+```bash
+python3 -m kite_rpc_doctor compare \
+  --rpc-url https://rpc-testnet.gokite.ai \
+  --secondary-rpc-url https://your-secondary-kite-rpc.example \
+  --max-block-delta 5 \
+  --json
+```
+
+Both endpoints must pass their health checks, return the same chain ID, and differ by no more than `maxBlockDelta` blocks. The comparison JSON includes `blockDelta`, `maxBlockDelta`, `chainIdsMatch`, `blocksInSync`, and the full primary/secondary reports without exposing endpoint URLs. Using the same URL twice is only a smoke test, not independent verification.
+
 ## Exit status
 
-- `0`: RPC responses are valid, the chain ID matches, the latest block is fresh, and requested contract code exists.
-- `1`: RPC responses are valid but the chain ID differs, the block is stale/future-dated, or requested contract code is missing.
+- `0`: all requested checks pass.
+- `1`: a chain ID differs, a block is stale/future-dated, requested contract code is missing, or endpoint results diverge.
 - `2`: invalid local configuration, transport failure, RPC error, or malformed response.
 
 See [usage](docs/USAGE.md), [architecture](docs/ARCHITECTURE.md), and [testing and deployment](docs/TESTING.md) for details.
 
 ## Known limitations
 
-- A successful check proves RPC responsiveness, chain identity, timely block data, and requested code presence only; it does not prove that a facilitator, wallet, or paid service is ready.
-- The latest block is not compared with an independent RPC or explorer, so the tool cannot detect every stalled, censored, or manipulated RPC.
+- A successful check proves only the reported RPC observations; it does not prove that a facilitator, wallet, or paid service is ready.
+- A two-endpoint comparison cannot prove which endpoint is correct or whether either follows the canonical network.
 - Block freshness depends on the local system clock and the configured age limit.
 - Contract code presence does not establish contract identity, ownership, source verification, or safety.
 - HTTP endpoints are supported for local development. Use HTTPS for remote endpoints.
