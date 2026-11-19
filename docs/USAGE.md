@@ -4,11 +4,16 @@
 kite-rpc-doctor check [--rpc-url URL] [--expected-chain-id ID]
                       [--timeout SECONDS] [--max-block-age-seconds SECONDS]
                       [--contract-address ADDRESS] [--json]
+
+kite-rpc-doctor compare --rpc-url URL --secondary-rpc-url URL
+                        [--expected-chain-id ID] [--timeout SECONDS]
+                        [--max-block-age-seconds SECONDS]
+                        [--max-block-delta BLOCKS] [--json]
 ```
 
 `python3 -m kite_rpc_doctor` is equivalent to the installed command.
 
-## Examples
+## Health-check examples
 
 Check Kite Testnet with defaults:
 
@@ -38,23 +43,39 @@ python3 -m kite_rpc_doctor check \
   --json
 ```
 
-Use the check in shell automation:
+## Endpoint comparison
+
+Replace the placeholder with an independent Kite RPC provider:
 
 ```bash
-if python3 -m kite_rpc_doctor check --json > report.json; then
-  echo "RPC, chain ID, and block freshness are ready"
+python3 -m kite_rpc_doctor compare \
+  --rpc-url https://rpc-testnet.gokite.ai \
+  --secondary-rpc-url https://your-secondary-kite-rpc.example \
+  --max-block-delta 5 \
+  --json
+```
+
+Both endpoint reports must pass, chain IDs must match, and the absolute block-height difference must not exceed the configured limit. A result can fail because either endpoint is unhealthy or because their observations diverge. Reusing one URL for both sides checks the CLI flow only and is not independent evidence.
+
+Use either command in shell automation:
+
+```bash
+if python3 -m kite_rpc_doctor compare \
+  --secondary-rpc-url https://your-secondary-kite-rpc.example \
+  --json > comparison.json; then
+  echo "Both endpoints are consistent"
 else
   status=$?
-  echo "Check failed with status $status"
+  echo "Comparison failed with status $status"
 fi
 ```
 
-A chain mismatch, stale block, future-dated block, or requested contract with empty code returns `1`; connectivity, configuration, and response errors return `2`. Treat all of them as a failed readiness gate.
+A chain mismatch, stale block, future-dated block, requested contract with empty code, or endpoint divergence returns `1`; connectivity, configuration, and response errors return `2`. Treat all of them as a failed readiness gate.
 
-The base JSON report contains `ok`, `status`, `chainId`, `expectedChainId`, `latestBlock`, `latestBlockHex`, `latestBlockTimestamp`, `latestBlockAgeSeconds`, `maxBlockAgeSeconds`, `blockFresh`, `observedAt`, and per-call `latencyMs` fields. Contract checks add `contractAddress`, `contractDeployed`, and a `contractCode` latency field.
+The base health report contains `ok`, `status`, `chainId`, `expectedChainId`, `latestBlock`, `latestBlockHex`, `latestBlockTimestamp`, `latestBlockAgeSeconds`, `maxBlockAgeSeconds`, `blockFresh`, `observedAt`, and per-call `latencyMs` fields. Contract checks add `contractAddress`, `contractDeployed`, and a `contractCode` latency field. Comparisons add `blockDelta`, `maxBlockDelta`, `chainIdsMatch`, `blocksInSync`, `primary`, and `secondary`.
 
 ## Authentication and errors
 
-There is no wallet authentication. RPC providers that require query tokens can be used through `KITE_RPC_URL`; URL userinfo is deliberately rejected. Error output is written to standard error. Reports do not include the RPC URL.
+There is no wallet authentication. RPC providers that require query tokens can be used through environment variables; URL userinfo is deliberately rejected. Error output is written to standard error. Reports do not include either RPC URL.
 
 This CLI does not expose an HTTP service or an authentication API. It is a local process that makes outbound read-only JSON-RPC requests.
