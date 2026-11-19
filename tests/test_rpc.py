@@ -5,6 +5,7 @@ import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from kite_rpc_doctor.rpc import (
+    MAX_RESPONSE_BYTES,
     JsonRpcClient,
     RpcResponseError,
     RpcTransportError,
@@ -20,7 +21,9 @@ class RpcHandler(BaseHTTPRequestHandler):
         if self.path == "/http-error":
             self.send_error(503)
             return
-        if self.path == "/malformed":
+        if self.path == "/large-response":
+            body = b"{" + b" " * MAX_RESPONSE_BYTES
+        elif self.path == "/malformed":
             body = b"{"
         else:
             message = {"jsonrpc": "2.0", "id": request["id"]}
@@ -82,6 +85,10 @@ class JsonRpcClientTests(unittest.TestCase):
     def test_rejects_malformed_json(self):
         with self.assertRaisesRegex(RpcResponseError, "malformed JSON"):
             JsonRpcClient(self.base_url + "/malformed").call("eth_chainId")
+
+    def test_rejects_oversized_responses(self):
+        with self.assertRaisesRegex(RpcResponseError, "1 MiB limit"):
+            JsonRpcClient(self.base_url + "/large-response").call("eth_chainId")
 
     def test_rejects_mismatched_response_ids(self):
         with self.assertRaisesRegex(RpcResponseError, "ID does not match"):
