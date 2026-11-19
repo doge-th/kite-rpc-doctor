@@ -7,6 +7,8 @@ from itertools import count
 from typing import Any, List, Optional
 from urllib.parse import urlparse
 
+MAX_RESPONSE_BYTES = 1024 * 1024
+
 
 class RpcError(Exception):
     pass
@@ -53,7 +55,9 @@ class JsonRpcClient:
 
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                body = response.read()
+                body = response.read(MAX_RESPONSE_BYTES + 1)
+                if len(body) > MAX_RESPONSE_BYTES:
+                    raise RpcResponseError("RPC response exceeds the 1 MiB limit")
         except urllib.error.HTTPError as exc:
             raise RpcTransportError("RPC endpoint returned HTTP {}".format(exc.code)) from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
