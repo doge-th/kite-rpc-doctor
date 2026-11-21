@@ -9,7 +9,7 @@ python3 -m unittest discover -s tests -v
 python3 -m compileall -q kite_rpc_doctor tests
 ```
 
-The suite covers successful RPC calls, block detail retrieval, HTTP and JSON-RPC errors, malformed JSON, oversized responses, response ID mismatches, missing results, URL and timeout validation, hex quantity boundaries, chain mismatches, stale and future blocks, mismatched block details, deployed and missing contract code, malformed code responses, contract address validation, endpoint block deltas, chain mismatches, unhealthy secondaries, JSON output, and CLI exit statuses. Tests use a loopback HTTP server, fixed observation times, and mocks; they do not need testnet tokens or a wallet.
+The suite covers successful RPC calls, block detail retrieval, HTTP and JSON-RPC errors, malformed JSON, oversized responses, response ID mismatches, missing results, URL and timeout validation, hex quantity boundaries, chain mismatches, stale and future blocks, mismatched block details, deployed and missing contract code, malformed code responses, contract address validation, endpoint block deltas, chain mismatches, unhealthy secondaries, versioned JSON output, structured transport/configuration errors, and CLI exit statuses. Tests use a loopback HTTP server, fixed observation times, and mocks; they do not need testnet tokens or a wallet.
 
 ## Real Kite Testnet smoke check
 
