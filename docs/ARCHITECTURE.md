@@ -5,7 +5,7 @@
 - `kite_rpc_doctor/rpc.py` validates endpoint settings, sends bounded JSON-RPC 2.0 requests, reads at most 1 MiB of each response, validates response IDs and envelopes, surfaces transport/RPC errors, and parses canonical EVM hex quantities.
 - `kite_rpc_doctor/doctor.py` performs chain, block, and freshness checks, optionally requests contract bytecode, and creates an immutable report.
 - `kite_rpc_doctor/compare.py` runs the doctor flow against two clients and compares their chain IDs and block heights with a configured maximum delta.
-- `kite_rpc_doctor/cli.py` provides the `check` and `compare` commands, parses arguments and environment defaults, renders text or JSON, and maps results to documented exit statuses.
+- `kite_rpc_doctor/cli.py` provides the `check` and `compare` commands, parses arguments and environment defaults, renders text or versioned JSON, emits structured JSON runtime errors, and maps results to documented exit statuses.
 - `kite_rpc_doctor/__main__.py` supports `python3 -m kite_rpc_doctor`.
 - `tests/` uses local HTTP JSON-RPC servers, fixed observation times, and mocked client failures; the standard suite does not require public network access.
 
