@@ -30,6 +30,7 @@ class ComparisonReport:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "reportVersion": 1,
             "ok": self.ok,
             "status": "pass" if self.ok else "fail",
             "blockDelta": self.block_delta,

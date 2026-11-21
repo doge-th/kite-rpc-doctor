@@ -3,11 +3,11 @@ import json
 import math
 import os
 import sys
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from .compare import run_comparison
 from .doctor import run_doctor
-from .rpc import JsonRpcClient, RpcError
+from .rpc import JsonRpcClient, RpcError, RpcTransportError
 
 
 def positive_chain_id(value: str) -> int:
@@ -38,6 +38,21 @@ def positive_seconds(value: str) -> float:
     if not math.isfinite(parsed) or parsed <= 0:
         raise argparse.ArgumentTypeError("value must be positive and finite")
     return parsed
+
+
+def error_report(exc: Exception) -> Dict[str, Any]:
+    if isinstance(exc, ValueError):
+        error_type = "configuration"
+    elif isinstance(exc, RpcTransportError):
+        error_type = "transport"
+    else:
+        error_type = "rpc_response"
+    return {
+        "reportVersion": 1,
+        "ok": False,
+        "status": "error",
+        "error": {"type": error_type, "message": str(exc)},
+    }
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -90,7 +105,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                 contract_address=args.contract_address,
             )
     except (RpcError, ValueError) as exc:
-        print("kite-rpc-doctor: {}".format(exc), file=sys.stderr)
+        if args.json:
+            print(json.dumps(error_report(exc), indent=2, sort_keys=True))
+        else:
+            print("kite-rpc-doctor: {}".format(exc), file=sys.stderr)
         return 2
 
     if args.json:

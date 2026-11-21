@@ -38,6 +38,7 @@ class DoctorReport:
 
     def to_dict(self) -> Dict[str, Any]:
         result: Dict[str, Any] = {
+            "reportVersion": 1,
             "ok": self.ok,
             "status": "pass" if self.ok else "fail",
             "chainId": self.chain_id,
