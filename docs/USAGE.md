@@ -70,7 +70,7 @@ else
 fi
 ```
 
-A chain mismatch, stale block, future-dated block, requested contract with empty code, or endpoint divergence returns `1`; connectivity, configuration, and response errors return `2`. Treat all of them as a failed readiness gate.
+A chain mismatch, stale block, future-dated block, requested contract with empty code, or endpoint divergence returns `1`; connectivity, configuration, and response errors return `2`. Treat all of them as a failed readiness gate. With `--json`, runtime errors are emitted as JSON with `reportVersion`, `status:"error"`, and an `error` object containing `type` and `message`; successful reports also carry `reportVersion:1`.
 
 The base health report contains `ok`, `status`, `chainId`, `expectedChainId`, `latestBlock`, `latestBlockHex`, `latestBlockTimestamp`, `latestBlockAgeSeconds`, `maxBlockAgeSeconds`, `blockFresh`, `observedAt`, and per-call `latencyMs` fields. Contract checks add `contractAddress`, `contractDeployed`, and a `contractCode` latency field. Comparisons add `blockDelta`, `maxBlockDelta`, `chainIdsMatch`, `blocksInSync`, `primary`, and `secondary`.
 
