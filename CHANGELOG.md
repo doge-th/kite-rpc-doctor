@@ -2,6 +2,14 @@
 
 Notable changes are documented here. The project follows semantic versioning.
 
+## 0.4.1 - 2026-11-21
+
+### Added
+
+- Versioned JSON reports and structured JSON runtime errors for transport, RPC-response, and configuration failures.
+- Standard-output error reports under `--json`, preserving text behavior for non-JSON callers.
+- Regression tests for structured error type, message, version, and exit status.
+
 ## 0.4.0 - 2026-11-20
 
 ### Added

@@ -98,6 +98,10 @@ python3 -m kite_rpc_doctor compare \
 
 Both endpoints must pass their health checks, return the same chain ID, and differ by no more than `maxBlockDelta` blocks. The comparison JSON includes `blockDelta`, `maxBlockDelta`, `chainIdsMatch`, `blocksInSync`, and the full primary/secondary reports without exposing endpoint URLs. Using the same URL twice is only a smoke test, not independent verification.
 
+## Structured JSON errors
+
+With `--json`, runtime transport, RPC-response, and configuration failures also emit JSON on standard output instead of plain text on standard error. Error reports contain `reportVersion`, `ok:false`, `status:"error"`, and an `error` object with `type` and `message`. Successful health and comparison reports also include `reportVersion:1`. Argument-parser usage errors retain argparse's standard output.
+
 ## Exit status
 
 - `0`: all requested checks pass.
