@@ -83,6 +83,7 @@ class ComparisonTests(unittest.TestCase):
         self.assertEqual(status, 0)
         report = json.loads(output.getvalue())
         self.assertTrue(report["ok"])
+        self.assertEqual(report["reportVersion"], 1)
         self.assertEqual(report["blockDelta"], 0)
 
     @patch("kite_rpc_doctor.cli.JsonRpcClient")

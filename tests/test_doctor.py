@@ -170,6 +170,30 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("Contract code: MISSING", output.getvalue())
 
+    @patch("kite_rpc_doctor.cli.JsonRpcClient")
+    def test_json_transport_error_is_structured(self, client_type):
+        client_type.return_value.call.side_effect = RpcTransportError("offline")
+        output = io.StringIO()
+        errors = io.StringIO()
+        with redirect_stdout(output), redirect_stderr(errors):
+            status = main(["check", "--json"])
+        self.assertEqual(status, 2)
+        self.assertEqual(errors.getvalue(), "")
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["reportVersion"], 1)
+        self.assertEqual(report["status"], "error")
+        self.assertEqual(report["error"], {"type": "transport", "message": "offline"})
+
+    def test_json_configuration_error_is_structured(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            status = main(["check", "--contract-address", "0x1234", "--json"])
+        self.assertEqual(status, 2)
+        report = json.loads(output.getvalue())
+        self.assertFalse(report["ok"])
+        self.assertEqual(report["error"]["type"], "configuration")
+        self.assertIn("contract address", report["error"]["message"])
+
 
 if __name__ == "__main__":
     unittest.main()
