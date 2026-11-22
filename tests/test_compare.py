@@ -71,6 +71,35 @@ class ComparisonTests(unittest.TestCase):
         primary.call.assert_not_called()
         secondary.call.assert_not_called()
 
+    def test_failure_reasons_empty_when_passing(self):
+        primary = Mock()
+        secondary = Mock()
+        primary.call.side_effect = ["0x940", "0x64", block_result(100)]
+        secondary.call.side_effect = ["0x940", "0x64", block_result(100)]
+        report = run_comparison(primary, secondary, 2368)
+        self.assertEqual(report.failure_reasons, [])
+
+    def test_failure_reasons_report_stale_secondary(self):
+        primary = Mock()
+        secondary = Mock()
+        primary.call.side_effect = ["0x940", "0x64", block_result(100)]
+        secondary.call.side_effect = ["0x940", "0x64", block_result(100, age=3600)]
+        report = run_comparison(primary, secondary, 2368)
+        self.assertIn("secondary_block_stale", report.failure_reasons)
+        self.assertNotIn("primary_block_stale", report.failure_reasons)
+        self.assertNotIn("block_delta_exceeded", report.failure_reasons)
+
+    def test_failure_reasons_report_chain_divergence_and_delta(self):
+        primary = Mock()
+        secondary = Mock()
+        primary.call.side_effect = ["0x940", "0x64", block_result(100)]
+        secondary.call.side_effect = ["0x1", "0x50", block_result(80)]
+        report = run_comparison(primary, secondary, 2368)
+        self.assertNotIn("primary_chain_id_mismatch", report.failure_reasons)
+        self.assertIn("secondary_chain_id_mismatch", report.failure_reasons)
+        self.assertIn("chain_id_divergence", report.failure_reasons)
+        self.assertIn("block_delta_exceeded", report.failure_reasons)
+
     @patch("kite_rpc_doctor.cli.JsonRpcClient")
     def test_compare_json_cli_returns_success(self, client_type):
         client_type.return_value.call.side_effect = [
@@ -85,6 +114,7 @@ class ComparisonTests(unittest.TestCase):
         self.assertTrue(report["ok"])
         self.assertEqual(report["reportVersion"], 1)
         self.assertEqual(report["blockDelta"], 0)
+        self.assertEqual(report["failureReasons"], [])
 
     @patch("kite_rpc_doctor.cli.JsonRpcClient")
     def test_compare_divergence_has_exit_status_one(self, client_type):
@@ -97,6 +127,8 @@ class ComparisonTests(unittest.TestCase):
             status = main(["compare", "--secondary-rpc-url", "https://rpc-testnet.gokite.ai"])
         self.assertEqual(status, 1)
         self.assertIn("FAIL", output.getvalue())
+        self.assertIn("Failure reasons:", output.getvalue())
+        self.assertIn("block_delta_exceeded", output.getvalue())
 
 
 if __name__ == "__main__":
