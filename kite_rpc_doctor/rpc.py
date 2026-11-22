@@ -37,15 +37,17 @@ class JsonRpcClient:
         self._ids = count(1)
 
     def call(self, method: str, params: Optional[List[Any]] = None) -> Any:
-        if not method:
-            raise ValueError("RPC method must not be empty")
+        if not isinstance(method, str) or not method:
+            raise ValueError("RPC method must be a non-empty string")
+        if params is not None and not isinstance(params, (list, dict)):
+            raise ValueError("RPC params must be a list or a dict")
 
         request_id = next(self._ids)
         payload = json.dumps({
             "jsonrpc": "2.0",
             "id": request_id,
             "method": method,
-            "params": params or [],
+            "params": params if params is not None else [],
         }).encode("utf-8")
         request = urllib.request.Request(
             self.url,
