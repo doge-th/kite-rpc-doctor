@@ -96,7 +96,7 @@ python3 -m kite_rpc_doctor compare \
   --json
 ```
 
-Both endpoints must pass their health checks, return the same chain ID, and differ by no more than `maxBlockDelta` blocks. The comparison JSON includes `blockDelta`, `maxBlockDelta`, `chainIdsMatch`, `blocksInSync`, and the full primary/secondary reports without exposing endpoint URLs. Using the same URL twice is only a smoke test, not independent verification.
+Both endpoints must pass their health checks, return the same chain ID, and differ by no more than `maxBlockDelta` blocks. The comparison JSON includes `blockDelta`, `maxBlockDelta`, `chainIdsMatch`, `blocksInSync`, `failureReasons`, and the full primary/secondary reports without exposing endpoint URLs. `failureReasons` is an empty list on success and otherwise lists machine-readable codes such as `primary_chain_id_mismatch`, `secondary_block_stale`, `secondary_contract_missing`, `chain_id_divergence`, or `block_delta_exceeded`. Text output prints the same reasons after `Failure reasons:` on failure. Using the same URL twice is only a smoke test, not independent verification.
 
 ## Structured JSON errors
 

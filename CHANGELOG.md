@@ -2,6 +2,14 @@
 
 Notable changes are documented here. The project follows semantic versioning.
 
+## 0.5.0 - 2026-11-22
+
+### Added
+
+- `failureReasons` in comparison JSON reports: machine-readable breakdown of comparison failures (`primary_chain_id_mismatch`, `secondary_block_stale`, `chain_id_divergence`, `block_delta_exceeded`, and related codes).
+- Text `compare` output now prints `Failure reasons:` whenever the comparison fails.
+- Regression tests for reason breakdown, empty list on pass, JSON field, and text output.
+
 ## 0.4.1 - 2026-11-21
 
 ### Added
