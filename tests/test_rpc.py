@@ -110,6 +110,22 @@ class JsonRpcClientTests(unittest.TestCase):
             with self.subTest(timeout=timeout), self.assertRaises(ValueError):
                 JsonRpcClient(self.base_url, timeout)
 
+    def test_rejects_invalid_method_and_params_without_sending_a_request(self):
+        client = JsonRpcClient(self.base_url)
+        for method in ("", None, 123, True):
+            with self.subTest(method=method), self.assertRaises(ValueError) as ctx:
+                client.call(method)
+            self.assertIn("RPC method", str(ctx.exception))
+        for params in ("0x940", 5, 1.5, True):
+            with self.subTest(params=params), self.assertRaises(ValueError) as ctx:
+                client.call("eth_chainId", params)
+            self.assertIn("RPC params", str(ctx.exception))
+
+    def test_accepts_list_and_dict_params(self):
+        client = JsonRpcClient(self.base_url)
+        self.assertEqual(client.call("eth_chainId", []), "0x940")
+        self.assertEqual(client.call("eth_chainId", {"block": "latest"}), "0x940")
+
     def test_parses_canonical_hex_quantities(self):
         self.assertEqual(parse_hex_quantity("0x940", "chain ID"), 2368)
         self.assertEqual(parse_hex_quantity("0x0", "block"), 0)
