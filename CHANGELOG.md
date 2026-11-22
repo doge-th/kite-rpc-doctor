@@ -2,6 +2,17 @@
 
 Notable changes are documented here. The project follows semantic versioning.
 
+## 0.5.1 - 2026-11-23
+
+### Changed
+
+- `JsonRpcClient.call` now validates its arguments up front: the method must be a non-empty string and `params` must be a list or a dict, rejecting malformed calls with `ValueError` before any network request.
+- JSON-RPC by-name (dict) params are passed through verbatim; an empty dict no longer collapses to an empty list.
+
+### Added
+
+- Regression tests for argument validation and list/dict params acceptance.
+
 ## 0.5.0 - 2026-11-22
 
 ### Added
