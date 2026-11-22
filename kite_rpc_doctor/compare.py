@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from .doctor import DoctorReport, run_doctor
 from .rpc import JsonRpcClient
@@ -28,6 +28,22 @@ class ComparisonReport:
     def ok(self) -> bool:
         return self.primary.ok and self.secondary.ok and self.blocks_in_sync
 
+    @property
+    def failure_reasons(self) -> List[str]:
+        reasons: List[str] = []
+        for name, report in (("primary", self.primary), ("secondary", self.secondary)):
+            if report.chain_id != report.expected_chain_id:
+                reasons.append("{}_chain_id_mismatch".format(name))
+            if not report.block_fresh:
+                reasons.append("{}_block_stale".format(name))
+            if report.contract_deployed is False:
+                reasons.append("{}_contract_missing".format(name))
+        if not self.chain_ids_match:
+            reasons.append("chain_id_divergence")
+        if self.block_delta > self.max_block_delta:
+            reasons.append("block_delta_exceeded")
+        return reasons
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "reportVersion": 1,
@@ -37,6 +53,7 @@ class ComparisonReport:
             "maxBlockDelta": self.max_block_delta,
             "chainIdsMatch": self.chain_ids_match,
             "blocksInSync": self.blocks_in_sync,
+            "failureReasons": self.failure_reasons,
             "primary": self.primary.to_dict(),
             "secondary": self.secondary.to_dict(),
         }

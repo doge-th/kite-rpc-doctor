@@ -118,6 +118,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("Primary: chain {}, block {}".format(report.primary.chain_id, report.primary.latest_block))
         print("Secondary: chain {}, block {}".format(report.secondary.chain_id, report.secondary.latest_block))
         print("Block delta: {} (limit {})".format(report.block_delta, report.max_block_delta))
+        if not report.ok:
+            print("Failure reasons: {}".format(", ".join(report.failure_reasons) or "none"))
     else:
         print("Kite RPC check: {}".format("PASS" if report.ok else "FAIL"))
         print("Chain ID: {} (expected {})".format(report.chain_id, report.expected_chain_id))
