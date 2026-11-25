@@ -2,6 +2,13 @@
 
 Notable changes are documented here. The project follows semantic versioning.
 
+## 0.5.3 - 2026-11-26
+
+### Added
+
+- `JsonRpcClient` now accepts an optional `headers` dict for custom HTTP headers (e.g., API keys). Keys and values must be strings; default `Content-Type` and `Accept` headers are preserved.
+- Regression tests for sending custom headers and rejecting non-dict or non-string header entries.
+
 ## 0.5.2 - 2026-11-25
 
 ### Added

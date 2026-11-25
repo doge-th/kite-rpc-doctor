@@ -3,6 +3,7 @@ import threading
 import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Dict, List, Optional
 
 from kite_rpc_doctor.rpc import (
     MAX_RESPONSE_BYTES,
@@ -14,7 +15,14 @@ from kite_rpc_doctor.rpc import (
 
 
 class RpcHandler(BaseHTTPRequestHandler):
+    received_headers: List[Dict[str, Optional[str]]] = []
+
     def do_POST(self):
+        self.received_headers.append({
+            "content-type": self.headers.get("Content-Type"),
+            "accept": self.headers.get("Accept"),
+            "x-api-key": self.headers.get("X-Api-Key"),
+        })
         length = int(self.headers.get("Content-Length", "0"))
         request = json.loads(self.rfile.read(length))
 
@@ -109,6 +117,19 @@ class JsonRpcClientTests(unittest.TestCase):
         for timeout in (0, -1, float("nan"), float("inf"), True):
             with self.subTest(timeout=timeout), self.assertRaises(ValueError):
                 JsonRpcClient(self.base_url, timeout)
+
+    def test_accepts_and_sends_custom_headers(self):
+        RpcHandler.received_headers.clear()
+        client = JsonRpcClient(self.base_url, headers={"X-Api-Key": "secret"})
+        self.assertEqual(client.call("eth_chainId"), "0x940")
+        self.assertEqual(RpcHandler.received_headers[-1]["content-type"], "application/json")
+        self.assertEqual(RpcHandler.received_headers[-1]["accept"], "application/json")
+        self.assertEqual(RpcHandler.received_headers[-1]["x-api-key"], "secret")
+
+    def test_rejects_invalid_custom_headers(self):
+        for headers in ("not-a-dict", {1: "value"}, {"key": 123}):
+            with self.subTest(headers=headers), self.assertRaises(ValueError):
+                JsonRpcClient(self.base_url, headers=headers)
 
     def test_rejects_invalid_method_and_params_without_sending_a_request(self):
         client = JsonRpcClient(self.base_url)

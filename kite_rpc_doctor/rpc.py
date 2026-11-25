@@ -4,7 +4,7 @@ import re
 import urllib.error
 import urllib.request
 from itertools import count
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 MAX_RESPONSE_BYTES = 1024 * 1024
@@ -23,7 +23,12 @@ class RpcResponseError(RpcError):
 
 
 class JsonRpcClient:
-    def __init__(self, url: str, timeout: float = 10.0) -> None:
+    def __init__(
+        self,
+        url: str,
+        timeout: float = 10.0,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> None:
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("RPC URL must be an absolute HTTP(S) URL")
@@ -31,9 +36,16 @@ class JsonRpcClient:
             raise ValueError("RPC URL must not contain user credentials")
         if isinstance(timeout, bool) or not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("RPC timeout must be a positive finite number")
+        if headers is not None:
+            if not isinstance(headers, dict):
+                raise ValueError("RPC headers must be a dict")
+            for key, value in headers.items():
+                if not isinstance(key, str) or not isinstance(value, str):
+                    raise ValueError("RPC header keys and values must be strings")
 
         self.url = url
         self.timeout = float(timeout)
+        self._extra_headers = dict(headers) if headers is not None else {}
         self._ids = count(1)
 
     def call(self, method: str, params: Optional[List[Any]] = None) -> Any:
@@ -52,7 +64,11 @@ class JsonRpcClient:
         request = urllib.request.Request(
             self.url,
             data=payload,
-            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                **self._extra_headers,
+            },
         )
 
         try:
