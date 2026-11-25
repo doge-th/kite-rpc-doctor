@@ -124,6 +124,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("Kite RPC check: {}".format("PASS" if report.ok else "FAIL"))
         print("Chain ID: {} (expected {})".format(report.chain_id, report.expected_chain_id))
         print("Latest block: {} ({})".format(report.latest_block, hex(report.latest_block)))
+        if report.latest_block_hash is not None:
+            print("Block hash: {}".format(report.latest_block_hash))
         print("Block age: {} seconds (limit {})".format(
             report.latest_block_age_seconds, report.max_block_age_seconds
         ))

@@ -2,6 +2,14 @@
 
 Notable changes are documented here. The project follows semantic versioning.
 
+## 0.5.2 - 2026-11-25
+
+### Added
+
+- `latestBlockHash` field in JSON reports and text output, populated from `eth_getBlockByNumber`.
+- Block hash validation: `run_doctor` rejects responses with missing or malformed `hash` fields.
+- Regression tests for missing hash, malformed hash, and `latest_block_hash` report field.
+
 ## 0.5.1 - 2026-11-23
 
 ### Changed

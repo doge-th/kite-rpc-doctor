@@ -13,10 +13,13 @@ from kite_rpc_doctor.rpc import RpcResponseError, RpcTransportError
 NOW = datetime(2026, 11, 18, 12, 0, tzinfo=timezone.utc)
 
 
-def block_result(number=16, timestamp=None):
+BLOCK_HASH = "0x1111111111111111111111111111111111111111111111111111111111111111"
+
+
+def block_result(number=16, timestamp=None, hash=BLOCK_HASH):
     if timestamp is None:
         timestamp = int(time.time()) - 30
-    return {"number": hex(number), "timestamp": hex(timestamp)}
+    return {"number": hex(number), "timestamp": hex(timestamp), "hash": hash}
 
 
 class DoctorTests(unittest.TestCase):
@@ -80,9 +83,36 @@ class DoctorTests(unittest.TestCase):
 
     def test_rejects_missing_block_timestamp(self):
         client = Mock()
-        client.call.side_effect = ["0x940", "0x10", {"number": "0x10"}]
+        client.call.side_effect = ["0x940", "0x10", {"number": "0x10", "hash": BLOCK_HASH}]
         with self.assertRaisesRegex(RpcResponseError, "block timestamp"):
             run_doctor(client, 2368)
+
+    def test_rejects_missing_block_hash(self):
+        client = Mock()
+        client.call.side_effect = ["0x940", "0x10", {"number": "0x10", "timestamp": hex(int(NOW.timestamp()))}]
+        with self.assertRaisesRegex(RpcResponseError, "block hash"):
+            run_doctor(client, 2368, now=NOW)
+
+    def test_rejects_malformed_block_hash(self):
+        client = Mock()
+        client.call.side_effect = [
+            "0x940",
+            "0x10",
+            {"number": "0x10", "timestamp": hex(int(NOW.timestamp())), "hash": "0x1234"},
+        ]
+        with self.assertRaisesRegex(RpcResponseError, "block hash"):
+            run_doctor(client, 2368, now=NOW)
+
+    def test_reports_latest_block_hash(self):
+        client = Mock()
+        client.call.side_effect = [
+            "0x940",
+            "0x10",
+            block_result(16, int(NOW.timestamp()) - 30, hash=BLOCK_HASH),
+        ]
+        report = run_doctor(client, 2368, 300, now=NOW)
+        self.assertEqual(report.latest_block_hash, BLOCK_HASH)
+        self.assertEqual(report.to_dict()["latestBlockHash"], BLOCK_HASH)
 
     @patch("kite_rpc_doctor.cli.JsonRpcClient")
     def test_json_cli_returns_success(self, client_type):

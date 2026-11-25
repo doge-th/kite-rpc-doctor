@@ -11,8 +11,11 @@ from kite_rpc_doctor.compare import run_comparison
 NOW = int(time.time())
 
 
-def block_result(number, age=30):
-    return {"number": hex(number), "timestamp": hex(NOW - age)}
+BLOCK_HASH = "0x1111111111111111111111111111111111111111111111111111111111111111"
+
+
+def block_result(number, age=30, hash=BLOCK_HASH):
+    return {"number": hex(number), "timestamp": hex(NOW - age), "hash": hash}
 
 
 class ComparisonTests(unittest.TestCase):

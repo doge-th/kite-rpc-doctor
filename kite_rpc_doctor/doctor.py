@@ -20,6 +20,7 @@ class DoctorReport:
     block_latency_ms: float
     block_detail_latency_ms: float
     observed_at: str
+    latest_block_hash: Optional[str] = None
     contract_address: Optional[str] = None
     contract_deployed: Optional[bool] = None
     contract_latency_ms: Optional[float] = None
@@ -50,6 +51,7 @@ class DoctorReport:
             "maxBlockAgeSeconds": self.max_block_age_seconds,
             "blockFresh": self.block_fresh,
             "observedAt": self.observed_at,
+            "latestBlockHash": self.latest_block_hash,
             "latencyMs": {
                 "chainId": self.chain_latency_ms,
                 "blockNumber": self.block_latency_ms,
@@ -96,6 +98,9 @@ def run_doctor(
     block_number = parse_hex_quantity(block.get("number"), "block number")
     if block_number != latest_block:
         raise RpcResponseError("block detail number does not match eth_blockNumber")
+    block_hash = block.get("hash")
+    if not isinstance(block_hash, str) or not re.fullmatch(r"0x[0-9a-fA-F]{64}", block_hash):
+        raise RpcResponseError("block hash must be a 32-byte 0x-prefixed hex digest")
     block_timestamp = parse_hex_quantity(block.get("timestamp"), "block timestamp")
     try:
         block_time = datetime.fromtimestamp(block_timestamp, timezone.utc)
@@ -125,6 +130,7 @@ def run_doctor(
         block_latency_ms=round(block_latency, 3),
         block_detail_latency_ms=round(block_detail_latency, 3),
         observed_at=observed_at,
+        latest_block_hash=block_hash,
         contract_address=contract_address,
         contract_deployed=contract_deployed,
         contract_latency_ms=None if contract_latency is None else round(contract_latency, 3),
