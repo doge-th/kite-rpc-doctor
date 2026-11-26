@@ -201,6 +201,33 @@ class DoctorTests(unittest.TestCase):
         self.assertIn("Contract code: MISSING", output.getvalue())
 
     @patch("kite_rpc_doctor.cli.JsonRpcClient")
+    def test_cli_passes_custom_headers_to_client(self, client_type):
+        client_type.return_value.call.side_effect = ["0x940", "0x10", block_result()]
+        output = io.StringIO()
+        with redirect_stdout(output):
+            status = main(["check", "--header", "X-Api-Key: secret", "--header", "X-Env: prod"])
+        self.assertEqual(status, 0)
+        self.assertEqual(client_type.call_args[0][2], {"X-Api-Key": "secret", "X-Env": "prod"})
+
+    @patch("kite_rpc_doctor.cli.JsonRpcClient")
+    def test_cli_rejects_duplicate_headers(self, client_type):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            status = main(["check", "--header", "X-Api-Key: one", "--header", "x-api-key: two", "--json"])
+        self.assertEqual(status, 2)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["error"]["type"], "configuration")
+        self.assertIn("duplicate HTTP header", report["error"]["message"])
+        client_type.assert_not_called()
+
+    def test_cli_rejects_malformed_header_argument(self):
+        errors = io.StringIO()
+        with redirect_stderr(errors), self.assertRaises(SystemExit) as ctx:
+            main(["check", "--header", "no-colon-here"])
+        self.assertEqual(ctx.exception.code, 2)
+        self.assertIn("Name: value", errors.getvalue())
+
+    @patch("kite_rpc_doctor.cli.JsonRpcClient")
     def test_json_transport_error_is_structured(self, client_type):
         client_type.return_value.call.side_effect = RpcTransportError("offline")
         output = io.StringIO()

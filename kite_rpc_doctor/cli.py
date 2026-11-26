@@ -10,6 +10,17 @@ from .doctor import run_doctor
 from .rpc import JsonRpcClient, RpcError, RpcTransportError
 
 
+def parse_header(value: str) -> "tuple[str, str]":
+    if ":" not in value:
+        raise argparse.ArgumentTypeError("header must be in 'Name: value' form")
+    name, header_value = value.split(":", 1)
+    name = name.strip()
+    header_value = header_value.strip()
+    if not name:
+        raise argparse.ArgumentTypeError("header name must not be empty")
+    return name, header_value
+
+
 def positive_chain_id(value: str) -> int:
     try:
         parsed = int(value, 0)
@@ -68,6 +79,14 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--timeout", type=positive_seconds, default=os.environ.get("KITE_RPC_TIMEOUT_SECONDS", "10"))
     check.add_argument("--max-block-age-seconds", type=positive_seconds, default=os.environ.get("KITE_MAX_BLOCK_AGE_SECONDS", "300"))
     check.add_argument("--contract-address", default=os.environ.get("KITE_CONTRACT_ADDRESS"))
+    check.add_argument(
+        "--header",
+        action="append",
+        type=parse_header,
+        default=[],
+        metavar="NAME: VALUE",
+        help="custom HTTP header for RPC requests (repeatable)",
+    )
     check.add_argument("--json", action="store_true", help="emit machine-readable JSON")
 
     compare = commands.add_parser("compare", help="compare two independent Kite RPC endpoints")
@@ -82,24 +101,45 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--timeout", type=positive_seconds, default=os.environ.get("KITE_RPC_TIMEOUT_SECONDS", "10"))
     compare.add_argument("--max-block-age-seconds", type=positive_seconds, default=os.environ.get("KITE_MAX_BLOCK_AGE_SECONDS", "300"))
     compare.add_argument("--max-block-delta", type=non_negative_int, default=os.environ.get("KITE_MAX_BLOCK_DELTA", "5"))
+    compare.add_argument(
+        "--header",
+        action="append",
+        type=parse_header,
+        default=[],
+        metavar="NAME: VALUE",
+        help="custom HTTP header for RPC requests (repeatable)",
+    )
     compare.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     return parser
+
+
+def build_headers(pairs: List["tuple[str, str]"]) -> Dict[str, str]:
+    headers: Dict[str, str] = {}
+    seen: set = set()
+    for name, value in pairs:
+        key = name.lower()
+        if key in seen:
+            raise ValueError("duplicate HTTP header: {}".format(name))
+        seen.add(key)
+        headers[name] = value
+    return headers
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        headers = build_headers(args.header)
         if args.command == "compare":
             report = run_comparison(
-                JsonRpcClient(args.rpc_url, args.timeout),
-                JsonRpcClient(args.secondary_rpc_url, args.timeout),
+                JsonRpcClient(args.rpc_url, args.timeout, headers),
+                JsonRpcClient(args.secondary_rpc_url, args.timeout, headers),
                 args.expected_chain_id,
                 args.max_block_age_seconds,
                 args.max_block_delta,
             )
         else:
             report = run_doctor(
-                JsonRpcClient(args.rpc_url, args.timeout),
+                JsonRpcClient(args.rpc_url, args.timeout, headers),
                 args.expected_chain_id,
                 args.max_block_age_seconds,
                 contract_address=args.contract_address,

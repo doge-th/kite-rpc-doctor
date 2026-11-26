@@ -2,6 +2,14 @@
 
 Notable changes are documented here. The project follows semantic versioning.
 
+## 0.5.4 - 2026-11-27
+
+### Added
+
+- `check` and `compare` accept repeatable `--header "NAME: VALUE"` options passed through to `JsonRpcClient`, for endpoints requiring API keys or custom metadata.
+- Duplicate header names are rejected case-insensitively with exit status 2 and a structured configuration error under `--json`.
+- Regression tests for header passthrough, duplicate rejection, and malformed argument handling. README and usage docs updated.
+
 ## 0.5.3 - 2026-11-26
 
 ### Added
