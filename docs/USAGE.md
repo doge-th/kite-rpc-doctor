@@ -3,12 +3,14 @@
 ```text
 kite-rpc-doctor check [--rpc-url URL] [--expected-chain-id ID]
                       [--timeout SECONDS] [--max-block-age-seconds SECONDS]
-                      [--contract-address ADDRESS] [--json]
+                      [--contract-address ADDRESS]
+                      [--header "NAME: VALUE"] [--json]
 
 kite-rpc-doctor compare --rpc-url URL --secondary-rpc-url URL
                         [--expected-chain-id ID] [--timeout SECONDS]
                         [--max-block-age-seconds SECONDS]
-                        [--max-block-delta BLOCKS] [--json]
+                        [--max-block-delta BLOCKS]
+                        [--header "NAME: VALUE"] [--json]
 ```
 
 `python3 -m kite_rpc_doctor` is equivalent to the installed command.
@@ -42,6 +44,16 @@ python3 -m kite_rpc_doctor check \
   --contract-address 0x38129cf4CE5E183eFF248F42A7D345Bb1B47621A \
   --json
 ```
+
+Send custom HTTP headers (for example an API key), repeatable:
+
+```bash
+python3 -m kite_rpc_doctor check \
+  --header "Authorization: Bearer YOUR_TOKEN" \
+  --header "X-Provider: acme"
+```
+
+Header names are case-insensitive; supplying the same header twice (in any casing) is rejected with exit status 2.
 
 ## Endpoint comparison
 

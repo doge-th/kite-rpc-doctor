@@ -84,6 +84,12 @@ python3 -m kite_rpc_doctor check \
 
 The JSON report then includes `contractAddress`, `contractDeployed`, and contract-call latency. Empty code (`0x`) fails the check. Code presence proves only that bytecode exists at that address and block, not that it is the intended, secure, or verified contract.
 
+Endpoints that require authentication or custom metadata accept repeatable `--header "NAME: VALUE"` options on both `check` and `compare`:
+
+```bash
+python3 -m kite_rpc_doctor check --header "Authorization: Bearer YOUR_TOKEN"
+```
+
 ## Compare two endpoints
 
 Use a second, independent Kite RPC endpoint to detect mismatched networks or divergent block data:
