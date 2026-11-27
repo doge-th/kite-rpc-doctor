@@ -2,8 +2,10 @@ import json
 import threading
 import time
 import unittest
+import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Dict, List, Optional
+from unittest.mock import patch
 
 from kite_rpc_doctor.rpc import (
     MAX_RESPONSE_BYTES,
@@ -12,6 +14,20 @@ from kite_rpc_doctor.rpc import (
     RpcTransportError,
     parse_hex_quantity,
 )
+
+
+class _FakeResponse:
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    def read(self, _limit: int = -1) -> bytes:
+        return self._body
+
+    def __enter__(self) -> "_FakeResponse":
+        return self
+
+    def __exit__(self, *args: object) -> bool:
+        return False
 
 
 class RpcHandler(BaseHTTPRequestHandler):
@@ -130,6 +146,43 @@ class JsonRpcClientTests(unittest.TestCase):
         for headers in ("not-a-dict", {1: "value"}, {"key": 123}):
             with self.subTest(headers=headers), self.assertRaises(ValueError):
                 JsonRpcClient(self.base_url, headers=headers)
+
+    def test_validates_max_retries(self):
+        for max_retries in (-1, True, 1.5, None):
+            with self.subTest(max_retries=max_retries), self.assertRaises(ValueError):
+                JsonRpcClient(self.base_url, max_retries=max_retries)
+        self.assertEqual(JsonRpcClient(self.base_url, max_retries=0).call("eth_chainId"), "0x940")
+
+    def test_retries_connection_failures_then_succeeds(self):
+        body = json.dumps({"jsonrpc": "2.0", "id": 1, "result": "0x940"}).encode("utf-8")
+        failures = [urllib.error.URLError("boom"), urllib.error.URLError("boom")]
+        with patch("kite_rpc_doctor.rpc.urllib.request.urlopen") as urlopen, \
+                patch("kite_rpc_doctor.rpc.time.sleep") as sleep:
+            urlopen.side_effect = failures + [_FakeResponse(body)]
+            client = JsonRpcClient(self.base_url, max_retries=3)
+            self.assertEqual(client.call("eth_chainId"), "0x940")
+        self.assertEqual(urlopen.call_count, 3)
+        self.assertGreaterEqual(sleep.call_count, 2)
+
+    def test_gives_up_after_exhausting_retries(self):
+        with patch("kite_rpc_doctor.rpc.urllib.request.urlopen") as urlopen, \
+                patch("kite_rpc_doctor.rpc.time.sleep"):
+            urlopen.side_effect = urllib.error.URLError("offline")
+            client = JsonRpcClient(self.base_url, max_retries=2)
+            with self.assertRaisesRegex(RpcTransportError, "offline"):
+                client.call("eth_chainId")
+        self.assertEqual(urlopen.call_count, 3)
+
+    def test_does_not_retry_http_errors(self):
+        with patch("kite_rpc_doctor.rpc.urllib.request.urlopen") as urlopen, \
+                patch("kite_rpc_doctor.rpc.time.sleep") as sleep:
+            urlopen.side_effect = urllib.error.HTTPError(
+                self.base_url, 503, "Service Unavailable", {}, None)
+            client = JsonRpcClient(self.base_url, max_retries=3)
+            with self.assertRaisesRegex(RpcTransportError, "HTTP 503"):
+                client.call("eth_chainId")
+        self.assertEqual(urlopen.call_count, 1)
+        sleep.assert_not_called()
 
     def test_rejects_invalid_method_and_params_without_sending_a_request(self):
         client = JsonRpcClient(self.base_url)

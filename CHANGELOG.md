@@ -2,6 +2,14 @@
 
 Notable changes are documented here. The project follows semantic versioning.
 
+## 0.5.5 - 2026-11-28
+
+### Added
+
+- `JsonRpcClient` accepts an optional `max_retries` count (default 0, behavior unchanged). Connection-level transport failures (DNS, refused connections, timeouts) are retried with capped exponential backoff; HTTP error responses and JSON-RPC response errors are never retried.
+- `max_retries` is validated as a non-negative integer at construction.
+- Regression tests for retry-then-succeed, exhausted retries, non-retry of HTTP errors, and argument validation.
+
 ## 0.5.4 - 2026-11-27
 
 ### Added
