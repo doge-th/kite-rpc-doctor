@@ -1,6 +1,7 @@
 import json
 import math
 import re
+import time
 import urllib.error
 import urllib.request
 from itertools import count
@@ -22,12 +23,17 @@ class RpcResponseError(RpcError):
     pass
 
 
+class _ConnectionError(RpcTransportError):
+    """Connection-level transport failure; eligible for retry when max_retries > 0."""
+
+
 class JsonRpcClient:
     def __init__(
         self,
         url: str,
         timeout: float = 10.0,
         headers: Optional[Dict[str, str]] = None,
+        max_retries: int = 0,
     ) -> None:
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -36,6 +42,8 @@ class JsonRpcClient:
             raise ValueError("RPC URL must not contain user credentials")
         if isinstance(timeout, bool) or not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("RPC timeout must be a positive finite number")
+        if isinstance(max_retries, bool) or not isinstance(max_retries, int) or max_retries < 0:
+            raise ValueError("RPC max_retries must be a non-negative integer")
         if headers is not None:
             if not isinstance(headers, dict):
                 raise ValueError("RPC headers must be a dict")
@@ -46,7 +54,21 @@ class JsonRpcClient:
         self.url = url
         self.timeout = float(timeout)
         self._extra_headers = dict(headers) if headers is not None else {}
+        self._max_retries = max_retries
         self._ids = count(1)
+
+    def _send(self, request: urllib.request.Request) -> bytes:
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                body = response.read(MAX_RESPONSE_BYTES + 1)
+                if len(body) > MAX_RESPONSE_BYTES:
+                    raise RpcResponseError("RPC response exceeds the 1 MiB limit")
+                return body
+        except urllib.error.HTTPError as exc:
+            raise RpcTransportError("RPC endpoint returned HTTP {}".format(exc.code)) from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            reason = getattr(exc, "reason", exc)
+            raise _ConnectionError("RPC request failed: {}".format(reason)) from exc
 
     def call(self, method: str, params: Optional[List[Any]] = None) -> Any:
         if not isinstance(method, str) or not method:
@@ -71,16 +93,15 @@ class JsonRpcClient:
             },
         )
 
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                body = response.read(MAX_RESPONSE_BYTES + 1)
-                if len(body) > MAX_RESPONSE_BYTES:
-                    raise RpcResponseError("RPC response exceeds the 1 MiB limit")
-        except urllib.error.HTTPError as exc:
-            raise RpcTransportError("RPC endpoint returned HTTP {}".format(exc.code)) from exc
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
-            reason = getattr(exc, "reason", exc)
-            raise RpcTransportError("RPC request failed: {}".format(reason)) from exc
+        body: Optional[bytes] = None
+        for attempt in range(self._max_retries + 1):
+            try:
+                body = self._send(request)
+                break
+            except _ConnectionError:
+                if attempt >= self._max_retries:
+                    raise
+                time.sleep(min(0.05 * (2 ** attempt), 1.0))
 
         try:
             message = json.loads(body.decode("utf-8"))
